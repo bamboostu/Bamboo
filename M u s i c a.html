@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>m u s i c a</title>
+  <!-- Importing Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(to bottom, #1e1e1e, #333);
+      color: #e0e0e0;
+      text-align: center;
+      padding: 30px;
+      animation: fadeIn 3s ease-in;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+      color: #f2f2f2;
+      letter-spacing: 10px;
+      animation: titleAnimation 1.5s ease-out;
+    }
+    #player-container {
+      margin: 30px auto;
+      max-width: 450px;
+      padding: 20px;
+      background: #222;
+      border-radius: 15px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+      animation: fadeIn 1s ease-in;
+    }
+    #playlist {
+      margin-top: 20px;
+      list-style: none;
+      padding: 0;
+      max-height: 300px;
+      overflow-y: auto;
+      opacity: 0;
+      animation: fadeIn 3s ease-in 0.5s forwards;
+    }
+    #playlist li {
+      margin: 8px 0;
+      padding: 12px;
+      background: #444;
+      border: 1px solid #666;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      animation: listItemAnimation 1s ease-in-out;
+    }
+    #playlist li:hover {
+      background: #555;
+    }
+    #playlist li.active {
+      background: #ff8c00;
+      color: #fff;
+    }
+    #seek-bar, #volume-control {
+      width: 100%;
+      margin: 10px 0;
+      border-radius: 8px;
+      background: #555;
+    }
+    #seek-bar::-webkit-slider-runnable-track,
+    #volume-control::-webkit-slider-runnable-track {
+      height: 8px;
+      border-radius: 8px;
+      background: #888;
+    }
+    #seek-bar::-webkit-slider-thumb,
+    #volume-control::-webkit-slider-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #ff8c00;
+      cursor: pointer;
+    }
+    #controls {
+      margin: 15px 0;
+    }
+    button {
+      padding: 12px 20px;
+      margin: 10px;
+      cursor: pointer;
+      background: #ff8c00;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      transition: background 0.3s ease;
+      animation: fadeIn 1s ease-in-out;
+    }
+    button:hover {
+      background: #ff6a00;
+    }
+    button:active {
+      background: #ff5000;
+    }
+    input[type="file"], input[type="text"] {
+      padding: 10px;
+      margin-top: 20px;
+      background-color: #333;
+      border: 1px solid #444;
+      border-radius: 10px;
+      color: #e0e0e0;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    input[type="file"]:hover, input[type="text"]:hover {
+      background-color: #444;
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+    @keyframes titleAnimation {
+      0% {
+        transform: translateY(-20px);
+        opacity: 0;
+      }
+      100% {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+    @keyframes listItemAnimation {
+      0% {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>m u s i c a</h1>
+  <p>Select multiple audio files:</p>
+  <input type="file" id="file-input" multiple accept="audio/*">
+  <br>
+  <p>Create a new playlist:</p>
+  <input type="text" id="playlist-name" placeholder="Enter playlist name">
+  <button id="save-playlist-button">Save Playlist</button>
+  <button id="load-playlist-button">Load Playlist</button>
+  <div id="player-container">
+    <audio id="player" controls></audio>
+    <h2 id="current-track">No track selected</h2>
+    <input type="range" id="seek-bar" value="0" min="0" step="1">
+    <input type="range" id="volume-control" value="1" min="0" max="1" step="0.01">
+    <div id="controls">
+      <button id="prev-button">Prev</button>
+      <button id="play-pause-button">Play</button>
+      <button id="next-button">Next</button>
+    </div>
+  </div>
+  <ul id="playlist"></ul>
+
+  <script>
+    const fileInput = document.getElementById('file-input');
+    const player = document.getElementById('player');
+    const currentTrack = document.getElementById('current-track');
+    const seekBar = document.getElementById('seek-bar');
+    const volumeControl = document.getElementById('volume-control');
+    const prevButton = document.getElementById('prev-button');
+    const playPauseButton = document.getElementById('play-pause-button');
+    const nextButton = document.getElementById('next-button');
+    const playlistNameInput = document.getElementById('playlist-name');
+    const savePlaylistButton = document.getElementById('save-playlist-button');
+    const loadPlaylistButton = document.getElementById('load-playlist-button');
+    const playlist = document.getElementById('playlist');
+
+    let audioFiles = [];
+    let currentIndex = -1;
+    let currentPlaylistName = "";
+
+    // Read cookies
+    function getCookies() {
+      const cookies = document.cookie.split('; ').reduce((acc, cookie) => {
+        const [key, value] = cookie.split('=');
+        acc[key] = value;
+        return acc;
+      }, {});
+      return cookies;
+    }
+
+    // Save playlists to cookies
+    function savePlaylistsToCookies(playlists) {
+      document.cookie = `playlists=${JSON.stringify(playlists)}; path=/; max-age=31536000`;
+    }
+
+    // Load playlists from cookies
+    function loadPlaylistsFromCookies() {
+      const cookies = getCookies();
+      if (cookies.playlists) {
+        return JSON.parse(cookies.playlists);
+      }
+      return {};
+    }
+
+    // Handle file selection
+    fileInput.addEventListener('change', (event) => {
+      const files = Array.from(event.target.files).filter(file => file.type.startsWith('audio/'));
+      if (files.length === 0) {
+        alert('No audio files selected!');
+        return;
+      }
+      audioFiles = files;
+      updatePlaylist();
+    });
+
+    // Update playlist UI
+    function updatePlaylist() {
+      playlist.innerHTML = '';
+      audioFiles.forEach((file, index) => {
+        const listItem = document.createElement('li');
+        listItem.textContent = file.name;
+        listItem.dataset.index = index;
+        listItem.addEventListener('click', () => playTrack(index));
+        playlist.appendChild(listItem);
+      });
+    }
+
+    // Play the selected track
+    function playTrack(index) {
+      if (index < 0 || index >= audioFiles.length) return;
+
+      const file = audioFiles[index];
+      player.src = URL.createObjectURL(file);
+      player.play();
+      currentIndex = index;
+      currentTrack.textContent = `Playing: ${file.name}`;
+
+      Array.from(playlist.children).forEach((item, idx) => {
+        item.classList.toggle('active', idx === index);
+      });
+    }
+
+    // Save the current playlist to cookies
+    savePlaylistButton.addEventListener('click', () => {
+      const playlistName = playlistNameInput.value.trim();
+      if (!playlistName) {
+        alert('Please enter a playlist name');
+        return;
+      }
+
+      // Load existing playlists
+      const playlists = loadPlaylistsFromCookies();
+
+      // Save the current playlist under the entered name
+      playlists[playlistName] = audioFiles;
+      savePlaylistsToCookies(playlists);
+
+      alert('Playlist saved!');
+    });
+
+    // Load a playlist from cookies
+    loadPlaylistButton.addEventListener('click', () => {
+      const playlistName = playlistNameInput.value.trim();
+      if (!playlistName) {
+        alert('Please enter a playlist name to load');
+        return;
+      }
+
+      // Load existing playlists
+      const playlists = loadPlaylistsFromCookies();
+
+      if (playlists[playlistName]) {
+        audioFiles = playlists[playlistName];
+        updatePlaylist();
+        alert(`Loaded playlist: ${playlistName}`);
+      } else {
+        alert('Playlist not found!');
+      }
+    });
+
+    // Update the seek bar as the track plays
+    player.addEventListener('timeupdate', () => {
+      seekBar.value = (player.currentTime / player.duration) * 100 || 0;
+    });
+
+    // Seek functionality
+    seekBar.addEventListener('input', () => {
+      player.currentTime = (seekBar.value / 100) * player.duration;
+    });
+
+    // Volume control functionality
+    volumeControl.addEventListener('input', () => {
+      player.volume = volumeControl.value;
+    });
+
+    // Play/Pause functionality
+    playPauseButton.addEventListener('click', () => {
+      if (player.paused) {
+        player.play();
+      } else {
+        player.pause();
+      }
+    });
+
+    // Previous track functionality
+    prevButton.addEventListener('click', () => {
+      const prevIndex = (currentIndex - 1 + audioFiles.length) % audioFiles.length;
+      playTrack(prevIndex);
+    });
+
+    // Next track functionality
+    nextButton.addEventListener('click', () => {
+      const nextIndex = (currentIndex + 1) % audioFiles.length;
+      playTrack(nextIndex);
+    });
+  </script>
+</body>
+</html>
